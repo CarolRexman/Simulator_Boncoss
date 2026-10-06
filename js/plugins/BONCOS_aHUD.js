@@ -46,36 +46,6 @@
  * @type switch
  * @default 0
  *
- * @param switchDanaCepat
- * @text ID Switch PakaiDanaCepat
- * @type switch
- * @default 0
- *
- * @param varUtangDanaCepat
- * @text ID Variable UtangDanaCepat
- * @type variable
- * @default 0
- *
- * @param switchPinjolX
- * @text ID Switch PakaiPinjolX
- * @type switch
- * @default 0
- *
- * @param varUtangPinjolX
- * @text ID Variable UtangPinjolX
- * @type variable
- * @default 0
- *
- * @param switchUangKilat
- * @text ID Switch PakaiUangKilat
- * @type switch
- * @default 0
- *
- * @param varUtangUangKilat
- * @text ID Variable UtangUangKilat
- * @type variable
- * @default 0
- *
  * @help
  * Menampilkan kotak kecil di pojok kiri atas layar map berisi:
  * Utang dan Saldo — otomatis update tiap nilai variable berubah.
@@ -84,9 +54,6 @@
  * Di pojok KANAN atas, ada indikator "Hari ke-N — Pagi/Siang".
  * Di bawahnya, ada 2 BAR (bukan angka): Energi dan Nilai — otomatis
  * mengisi/mengosong sesuai persentase (nilai variable dianggap 0-100).
- * Di bawah itu, ada kotak "PINJOL AKTIF" yang menampilkan platform
- * pinjaman mana saja yang sedang terpakai beserta jumlahnya — kotak
- * ini OTOMATIS SEMBUNYI TOTAL kalau tidak ada satupun platform aktif.
  *
  * Cara pasang:
  * 1. Taruh file ini di folder js/plugins/ project kamu.
@@ -124,19 +91,6 @@
   const varNilai = Number(params["varNilai"] || 15);
   const switchAktif = Number(params["switchAktif"] || 0);
 
-  const switchDanaCepat = Number(params["switchDanaCepat"] || 0);
-  const varUtangDanaCepat = Number(params["varUtangDanaCepat"] || 0);
-  const switchPinjolX = Number(params["switchPinjolX"] || 0);
-  const varUtangPinjolX = Number(params["varUtangPinjolX"] || 0);
-  const switchUangKilat = Number(params["switchUangKilat"] || 0);
-  const varUtangUangKilat = Number(params["varUtangUangKilat"] || 0);
-
-  const daftarPlatform = [
-    { switchId: switchDanaCepat, varId: varUtangDanaCepat, label: "DanaCepat" },
-    { switchId: switchPinjolX, varId: varUtangPinjolX, label: "Pinjos" },
-    { switchId: switchUangKilat, varId: varUtangUangKilat, label: "UangKilat" },
-  ];
-
   function shouldShow() {
     if (switchAktif <= 0) return true;
     return $gameSwitches.value(switchAktif);
@@ -145,16 +99,11 @@
   class Window_BoncosHUD extends Window_Base {
     initialize() {
       const width = 260;
-      const rect = new Rectangle(8, 8, width, 112);
+      const height = 112;
+      const rect = new Rectangle(8, 8, width, height);
       super.initialize(rect);
       this.opacity = 200;
       this.refresh();
-    }
-
-    getPlatformAktif() {
-      return daftarPlatform.filter(
-        (p) => p.switchId > 0 && $gameSwitches.value(p.switchId)
-      );
     }
 
     update() {
@@ -166,85 +115,50 @@
     }
 
     refresh() {
+      this.contents.clear();
       const utang = $gameVariables.value(varUtang);
       const saldo = $gameVariables.value(varSaldo);
-      const aktif = this.getPlatformAktif();
-      const lh = this.lineHeight();
 
-      // 2 baris tetap (Utang, Saldo) + 1 baris per platform aktif
-      const newHeight = this.padding * 2 + lh * (2 + aktif.length);
-      if (this.height !== newHeight) {
-        this.height = newHeight;
-        this.createContents();
-      }
-
-      this.contents.clear();
-
+      const lineHeight = this.lineHeight();
       this.changeTextColor(ColorManager.textColor(2));
-      this.drawText("Utang", 0, 0 * lh, 120, "left");
+      this.drawText("Utang", 0, 0 * lineHeight, 120, "left");
       this.resetTextColor();
       this.drawText(
         "Rp" + utang.toLocaleString("id-ID"),
         0,
-        0 * lh,
+        0 * lineHeight,
         this.contents.width,
         "right"
       );
 
       this.changeTextColor(ColorManager.textColor(3));
-      this.drawText("Saldo", 0, 1 * lh, 120, "left");
+      this.drawText("Saldo", 0, 1 * lineHeight, 120, "left");
       this.resetTextColor();
       this.drawText(
         "Rp" + saldo.toLocaleString("id-ID"),
         0,
-        1 * lh,
+        1 * lineHeight,
         this.contents.width,
         "right"
       );
-
-      aktif.forEach((p, i) => {
-        const rowY = (2 + i) * lh;
-        const jumlah = $gameVariables.value(p.varId) || 0;
-        this.contents.fontSize = 18;
-        this.changeTextColor(ColorManager.textColor(2));
-        this.drawText("↳ " + p.label, 10, rowY + 4, 150, "left");
-        this.resetTextColor();
-        this.drawText(
-          "Rp" + jumlah.toLocaleString("id-ID"),
-          0,
-          rowY + 4,
-          this.contents.width,
-          "right"
-        );
-        this.contents.fontSize = $gameSystem.mainFontSize
-          ? $gameSystem.mainFontSize()
-          : 26;
-      });
     }
   }
 
   class Window_BoncosObjektif extends Window_Base {
-    initialize(hudWindow) {
+    initialize() {
       const maxWidth = 300;
+      // Persis di bawah box Utang/Saldo (box itu y=8, height=112)
       const x = 8;
       const y = 8 + 112 + 8;
       const rect = new Rectangle(x, y, maxWidth, 76);
       super.initialize(rect);
       this.opacity = 200;
       this._maxWidth = maxWidth;
-      this._hudWindow = hudWindow;
       this.refresh();
     }
 
     update() {
       super.update();
-      // Ikuti tinggi box Utang/Saldo yang bisa berubah-ubah (ada platform aktif atau tidak)
-      if (this._hudWindow) {
-        const newY = this._hudWindow.y + this._hudWindow.height + 8;
-        if (this.y !== newY) {
-          this.y = newY;
-        }
-      }
       this.visible = shouldShow();
       if (this.visible) {
         this.refresh();
@@ -315,7 +229,7 @@
       const hari = $gameVariables.value(varHari);
       const giliran = $gameVariables.value(varGiliran);
       const labelGiliran = giliran === 2 ? "Siang" : "Pagi";
-      const minggu = Math.max(1, Math.ceil(hari / 7));
+	  const minggu = Math.max(1, Math.ceil(hari / 7));
 
       this.drawText(
         "Minggu ke-" + minggu + " — " + labelGiliran,
@@ -409,7 +323,7 @@
     _Scene_Map_createAllWindows.call(this);
     this._boncosHudWindow = new Window_BoncosHUD();
     this.addWindow(this._boncosHudWindow);
-    this._boncosObjektifWindow = new Window_BoncosObjektif(this._boncosHudWindow);
+    this._boncosObjektifWindow = new Window_BoncosObjektif();
     this.addWindow(this._boncosObjektifWindow);
     this._boncosHariWindow = new Window_BoncosHari();
     this.addWindow(this._boncosHariWindow);
